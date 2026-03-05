@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rakumo Flow Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0F0E0C;
+  --paper: #F7F5F0;
+  --surface: #FFFFFF;
+  --line: #E5E0D8;
+  --muted: #8C8680;
+  --red: #C0392B;
+  --blue: #1A4A8A;
+  --gold: #B8860B;
+  --green: #1E6B45;
+  --orange: #D4600A;
+  --red-soft: #FDF0EE;
+  --blue-soft: #EEF3FB;
+  --green-soft: #EDF5F1;
+  --gold-soft: #FBF6E9;
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;font-size:14px}
+
+.topbar{background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:52px;position:sticky;top:0;z-index:100;}
+.topbar-brand{font-family:'IBM Plex Mono',monospace;font-size:15px;letter-spacing:3px;display:flex;align-items:center;gap:10px}
+.topbar-brand em{color:var(--gold);font-style:normal}
+.topbar-nav{display:flex;gap:4px}
+.nav-btn{background:none;border:none;color:rgba(255,255,255,0.55);padding:8px 14px;border-radius:4px;cursor:pointer;font-size:13px;font-family:'IBM Plex Sans',sans-serif;transition:all .15s;}
+.nav-btn:hover,.nav-btn.active{background:rgba(255,255,255,0.1);color:#fff}
+.nav-btn.active{color:var(--gold)}
+
+.alert-banner{background:linear-gradient(90deg,#7B1515,#C0392B);color:#fff;padding:10px 32px;display:flex;align-items:center;gap:10px;font-size:13px;flex-wrap:wrap;}
+.alert-banner.hidden{display:none}
+.alert-pill{background:rgba(255,255,255,0.2);border-radius:3px;padding:3px 8px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;white-space:nowrap;}
+
+.page{display:none;padding:28px 32px;max-width:1200px;margin:0 auto;animation:fadeUp .2s ease}
+.page.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.section-title{font-size:18px;font-weight:600;letter-spacing:-0.3px}
+.section-sub{font-size:12px;color:var(--muted);margin-top:2px}
+
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px;}
+.stat-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.stat-val{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:500}
+.stat-val.danger{color:var(--red)}
+.stat-val.warn{color:var(--orange)}
+.stat-val.ok{color:var(--green)}
+
+.table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{background:var(--paper);padding:10px 14px;text-align:left;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);font-weight:500;}
+td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(0,0,0,0.012)}
+
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 9px;border-radius:3px;font-weight:600;letter-spacing:0.3px;white-space:nowrap;}
+.badge-miss{background:var(--red-soft);color:var(--red);animation:pulse 2s infinite}
+.badge-linked{background:var(--green-soft);color:var(--green)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.65}}
+
+.form-panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:24px}
+.form-panel-head{padding:14px 20px;display:flex;align-items:center;gap:10px}
+.step-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;}
+.form-panel-title{font-size:14px;font-weight:600}
+.form-panel-sub{font-size:11px;opacity:0.75;margin-left:auto}
+.form-panel-body{padding:22px}
+
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:11px;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;font-weight:500;}
+.fg label .req{color:var(--red)}
+.fg label em{font-size:10px;color:var(--muted);font-style:normal;margin-left:4px;text-transform:none;letter-spacing:0}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+input[type=text],input[type=number],input[type=date],input[type=url],select,textarea{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:6px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--ink);background:var(--paper);outline:none;transition:border-color .15s,box-shadow .15s;}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,74,138,0.08);background:#fff;}
+textarea{resize:vertical;min-height:80px;line-height:1.6}
+
+.price-row{display:flex;gap:8px;align-items:center}
+.price-row input{flex:1}
+.price-eq{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);white-space:nowrap;padding:9px 0}
+
+.ai-box{background:linear-gradient(135deg,var(--blue-soft),#E8F0FB);border:1px solid #BDD0EE;border-radius:8px;padding:14px;margin-bottom:14px;}
+.ai-box.orange{background:linear-gradient(135deg,#FBF3EE,#F8EDE5);border-color:#EEC9AF;}
+.ai-box-title{font-size:11px;font-weight:700;color:var(--blue);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.ai-box.orange .ai-box-title{color:var(--orange)}
+.ai-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.chip{background:#fff;border:1px solid #BDD0EE;color:var(--blue);font-size:11px;padding:3px 9px;border-radius:20px;cursor:pointer;transition:all .12s;}
+.chip:hover,.chip.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.chip.orange-chip{border-color:#EEC9AF;color:var(--orange)}
+.chip.orange-chip:hover,.chip.orange-chip.on{background:var(--orange);color:#fff;border-color:var(--orange)}
+.ai-result{background:#fff;border:1px solid #BDD0EE;border-radius:6px;padding:10px 12px;font-size:12px;min-height:46px;line-height:1.7;color:var(--ink);position:relative;}
+.ai-result.loading::after{content:'AI đang viết...';color:var(--muted);font-style:italic;position:absolute;top:10px;left:12px;}
+.ai-result.loading::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(26,74,138,0.05),transparent);background-size:200%;animation:sh 1s infinite;border-radius:6px;}
+@keyframes sh{0%{background-position:200%}100%{background-position:-200%}}
+.ai-actions{display:flex;gap:7px;margin-top:9px}
+.btn-ai{background:var(--blue);color:#fff;border:none;padding:7px 13px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:opacity .12s;display:flex;align-items:center;gap:5px;}
+.btn-ai:hover{opacity:.85}
+.btn-ai:disabled{opacity:.4;cursor:not-allowed}
+.btn-ai.orange{background:var(--orange)}
+.btn-ai-use{background:var(--green-soft);color:var(--green);border:1px solid #A8D5BE;padding:7px 13px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all .12s;display:none;}
+.btn-ai-use:hover{background:var(--green);color:#fff}
+
+.account-selector{border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+.account-search{display:flex;align-items:center;border-bottom:1px solid var(--line);padding:0 10px;gap:8px;}
+.account-search input{border:none;background:none;padding:9px 0;font-size:13px}
+.account-search input:focus{box-shadow:none}
+.acc-list-inner{max-height:150px;overflow-y:auto}
+.acc-item{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--line);transition:background .1s;display:flex;align-items:center;justify-content:space-between;}
+.acc-item:last-child{border-bottom:none}
+.acc-item:hover{background:var(--blue-soft)}
+.acc-item.selected{background:var(--blue-soft);border-left:3px solid var(--blue)}
+.acc-name{font-size:13px;font-weight:500}
+.acc-bank{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.acc-tag{font-size:10px;padding:2px 6px;border-radius:3px;font-weight:600}
+.tag-vendor{background:var(--gold-soft);color:var(--gold)}
+.tag-employee{background:var(--blue-soft);color:var(--blue)}
+.no-acc{padding:20px;text-align:center;color:var(--muted);font-size:12px}
+
+.btn-primary{width:100%;background:var(--ink);color:#fff;border:none;padding:12px;border-radius:7px;font-size:14px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:opacity .12s;}
+.btn-primary:hover{opacity:.85}
+.btn-primary.blue{background:var(--blue)}
+.btn-primary.orange{background:var(--orange)}
+.btn-secondary{background:var(--paper);color:var(--ink);border:1px solid var(--line);padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all .12s;}
+.btn-secondary:hover{border-color:var(--ink);background:#fff}
+.btn-sm{padding:5px 10px;border-radius:5px;font-size:11px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;border:1px solid var(--line);background:var(--paper);transition:all .12s;}
+.btn-sm:hover{background:#fff;border-color:var(--ink)}
+.btn-sm.link{background:var(--green-soft);color:var(--green);border-color:#A8D5BE}
+.btn-sm.link:hover{background:var(--green);color:#fff}
+.btn-sm.del{background:var(--red-soft);color:var(--red);border-color:#EBBBB7}
+.btn-sm.del:hover{background:var(--red);color:#fff}
+.btn-sm.copy{background:var(--blue-soft);color:var(--blue);border-color:#BDD0EE}
+.btn-sm.copy:hover{background:var(--blue);color:#fff}
+.btns{display:flex;gap:5px;flex-wrap:wrap}
+
+.accounts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.acc-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.acc-card:hover{box-shadow:var(--shadow-md)}
+.acc-card-name{font-size:14px;font-weight:600;margin-bottom:2px}
+.acc-card-detail{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;line-height:1.9}
+
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:300;display:none;align-items:center;justify-content:center;}
+.modal-bg.on{display:flex}
+.modal{background:#fff;border-radius:12px;padding:26px 30px;max-width:540px;width:90%;max-height:82vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.18);animation:fadeUp .2s ease;}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:3px}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:18px}
+.cfield{display:flex;align-items:flex-start;border:1px solid var(--line);border-radius:6px;padding:9px 12px;margin-bottom:8px;gap:8px;}
+.cfield-label{font-size:10px;color:var(--muted);min-width:90px;padding-top:1px;letter-spacing:0.3px;flex-shrink:0}
+.cfield-val{flex:1;font-size:12px;font-family:'IBM Plex Mono',monospace;word-break:break-word;line-height:1.6}
+.btn-copy-sm{background:var(--paper);border:1px solid var(--line);padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;white-space:nowrap;font-family:'IBM Plex Sans',sans-serif;transition:all .12s;flex-shrink:0;}
+.btn-copy-sm:hover{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-copy-sm.ok{background:var(--green);color:#fff;border-color:var(--green)}
+
+.toast{position:fixed;bottom:20px;right:20px;z-index:500;background:var(--ink);color:#fff;padding:11px 18px;border-radius:6px;font-size:13px;opacity:0;transform:translateY(16px);transition:all .25s;box-shadow:0 4px 20px rgba(0,0,0,0.2);pointer-events:none;}
+.toast.on{opacity:1;transform:none}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">RAKUMO <em>FLOW</em></div>
+  <div class="topbar-nav">
+    <button class="nav-btn active" onclick="goPage('dashboard')">ダッシュボード</button>
+    <button class="nav-btn" onclick="goPage('new-expense')">＋ 経費申請</button>
+    <button class="nav-btn" onclick="goPage('new-payment')">＋ 支払申請</button>
+    <button class="nav-btn" onclick="goPage('accounts')">口座管理</button>
+  </div>
+  <button onclick="toggleApiInput()" id="api-key-btn" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer;white-space:nowrap;margin-left:8px">&#128273; API Key</button>
+</div>
+
+<!-- API KEY PANEL -->
+<div id="api-panel" style="display:none;background:#1a1a2e;border-bottom:1px solid #2a2a3a;padding:10px 24px;align-items:center;gap:10px;flex-wrap:wrap">
+  <span style="font-size:12px;color:#aaa;white-space:nowrap">&#128273; Anthropic API Key (lu01b0u local, kh�ng gu1eedi u0111i nu01a1i kh�c):</span>
+  <input type="password" id="api-key-input" placeholder="sk-ant-..." style="flex:1;min-width:260px;max-width:420px;background:#111;border:1px solid #444;border-radius:5px;color:#fff;padding:6px 12px;font-size:12px;font-family:monospace">
+  <button onclick="saveApiKey()" style="background:#b8860b;color:#fff;border:none;border-radius:5px;padding:6px 16px;font-size:12px;cursor:pointer">Lu01b0u key</button>
+  <button onclick="clearApiKey()" style="background:transparent;color:#888;border:1px solid #444;border-radius:5px;padding:6px 12px;font-size:12px;cursor:pointer">Xu1eddkey</button>
+  <span style="font-size:11px;color:#555">Key chu1ec9 lu01b0u trong tr�nh duyu1ec7t cu1ee7a bu1ea1n</span>
+</div>
+
+<!-- API KEY PANEL -->
+<div id="api-panel" style="display:none;background:#1a1a2e;border-bottom:1px solid #2a2a3a;padding:10px 24px;align-items:center;gap:10px;flex-wrap:wrap">
+  <span style="font-size:12px;color:#aaa;white-space:nowrap">&#128273; Anthropic API Key (luu local, khong gui di noi khac):</span>
+  <input type="password" id="api-key-input" placeholder="sk-ant-..." style="flex:1;min-width:260px;max-width:420px;background:#111;border:1px solid #444;border-radius:5px;color:#fff;padding:6px 12px;font-size:12px;font-family:monospace">
+  <button onclick="saveApiKey()" style="background:#b8860b;color:#fff;border:none;border-radius:5px;padding:6px 16px;font-size:12px;cursor:pointer">Luu key</button>
+  <button onclick="clearApiKey()" style="background:transparent;color:#888;border:1px solid #444;border-radius:5px;padding:6px 12px;font-size:12px;cursor:pointer">Xoa key</button>
+  <span style="font-size:11px;color:#555">Key chi luu trong trinh duyet cua ban</span>
+</div>
+<div class="alert-banner hidden" id="alertBanner">
+  <span style="font-weight:600;white-space:nowrap">⚠ Chưa tạo 支払申請:</span>
+  <span id="alertText" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+</div>
+
+<!-- ════ DASHBOARD ════ -->
+<div class="page active" id="page-dashboard">
+  <div class="section-head">
+    <div>
+      <div class="section-title">Tổng quan</div>
+      <div class="section-sub" id="dashMonth"></div>
+    </div>
+    <button class="btn-secondary" onclick="showBatch()">📤 Batch Submit</button>
+  </div>
+  <div class="stats-row">
+    <div class="stat"><div class="stat-label">経費申請</div><div class="stat-val" id="s1">0</div></div>
+    <div class="stat"><div class="stat-label">支払申請</div><div class="stat-val" id="s2">0</div></div>
+    <div class="stat"><div class="stat-label">⚠ Chưa có 支払</div><div class="stat-val danger" id="s3">0</div></div>
+    <div class="stat"><div class="stat-label">⚠ 支払 chưa link</div><div class="stat-val warn" id="s4">0</div></div>
+    <div class="stat"><div class="stat-label">✓ Hoàn tất cả 2</div><div class="stat-val ok" id="s5">0</div></div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Trạng thái</th><th>Subject 経費</th><th>物品名</th><th>価格</th><th>Ngày</th><th>Liên kết 支払</th><th>Thao tác</th>
+      </tr></thead>
+      <tbody id="dashTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ════ NEW EXPENSE ════ -->
+<div class="page" id="page-new-expense">
+  <div class="section-head"><div><div class="section-title">経費申請 — Bước 1</div><div class="section-sub">Điền form duyệt chi phí</div></div></div>
+  <div class="form-panel">
+    <div class="form-panel-head" style="background:var(--blue);color:#fff">
+      <div class="step-num" style="background:rgba(255,255,255,0.25)">1</div>
+      <div class="form-panel-title">経費申請フォーム</div>
+      <div class="form-panel-sub">Sau khi lưu → hệ thống nhắc tạo 支払申請</div>
+    </div>
+    <div class="form-panel-body">
+      <div class="fg-row">
+        <div class="fg">
+          <label>Subject <span class="req">*</span></label>
+          <div style="position:relative">
+            <input type="text" id="e-sub" placeholder="VD: 【経費申請】文具購入 – Mua văn phòng phẩm" style="padding-right:110px">
+            <button onclick="genSubject('exp')" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:linear-gradient(135deg,#1A4A8A,#2d6cbe);color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap">✦ AI 件名</button>
+          </div>
+          <div id="sub-exp-suggestions" style="display:none;background:#fff;border:1px solid var(--line);border-radius:6px;margin-top:4px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.08)"></div>
+        </div>
+        <div class="fg"><label>物品名 <span class="req">*</span> <em>Tên hàng hoá</em></label><input type="text" id="e-item" placeholder="VD: ボールペン、ノート、付箋"></div>
+      </div>
+
+      <div class="ai-box">
+        <div class="ai-box-title">✦ AI — 購入目的 <span style="font-size:10px;font-weight:400;letter-spacing:0">(càng chi tiết càng tốt)</span></div>
+        <div class="ai-chips" id="exp-chips">
+          <span class="chip" onclick="tc(this,'exp','văn phòng phẩm')">📎 文具</span>
+          <span class="chip" onclick="tc(this,'exp','thiết bị IT')">💻 IT機器</span>
+          <span class="chip" onclick="tc(this,'exp','tiếp khách')">🍽 接客</span>
+          <span class="chip" onclick="tc(this,'exp','đi công tác')">✈ 出張</span>
+          <span class="chip" onclick="tc(this,'exp','đào tạo')">📚 研修</span>
+          <span class="chip" onclick="tc(this,'exp','sửa chữa')">🔧 修理</span>
+        </div>
+        <input type="text" id="exp-ctx" placeholder="Chi tiết: số lượng, tên SP, link, lý do cụ thể..." style="margin-bottom:8px;font-size:12px">
+        <div class="ai-result" id="exp-ai-out"><span style="color:var(--muted);font-style:italic;font-size:12px">Chọn chip + nhập chi tiết → AI viết 購入目的 đầy đủ</span></div>
+        <div class="ai-actions">
+          <button class="btn-ai" id="exp-ai-btn" onclick="genAI('exp','e-pur')">✦ Tạo 購入目的</button>
+          <button class="btn-ai-use" id="exp-ai-use" onclick="useAI('exp','e-pur')">✓ Dùng câu này</button>
+        </div>
+      </div>
+
+      <div class="fg"><label>購入目的 <span class="req">*</span> <em>Mục đích — chi tiết càng tốt, kèm link nếu có</em></label><textarea id="e-pur" rows="4" placeholder="VD: 事務用品補充のため。内容：ボールペン10本（青）、ノートA4 5冊、付箋3セット。在庫残り少なく業務に支障の恐れあり。参考URL: https://..."></textarea></div>
+      <div class="fg-row">
+        <div class="fg"><label>購入先 <span class="req">*</span> <em>Nơi mua</em></label><input type="text" id="e-vendor" placeholder="Amazon Japan, Tokyu Hands..."></div>
+        <div class="fg"><label>選定理由 <em>Lý do chọn nhà cung cấp</em></label><input type="text" id="e-reason" placeholder="最安値、納期が早い、品質が良い..."></div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>数量 <span class="req">*</span></label><input type="number" id="e-qty" placeholder="1" min="1"></div>
+        <div class="fg">
+          <label>価格 <span class="req">*</span> <em>VND → tự tính JPY</em></label>
+          <div class="price-row"><input type="number" id="e-vnd" placeholder="VND" oninput="calcJPY()"><span class="price-eq" id="e-jpy-disp">≈ 0円</span></div>
+          <input type="text" id="e-price-fmt" readonly placeholder="xxxVND約yyy円" style="margin-top:6px;background:var(--paper);font-family:'IBM Plex Mono',monospace;font-size:12px">
+        </div>
+      </div>
+      <div class="fg"><label>Ngày <span class="req">*</span></label><input type="date" id="e-date"></div>
+      <button class="btn-primary blue" onclick="saveExpense()">登録 → Lưu 経費申請</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ NEW PAYMENT ════ -->
+<div class="page" id="page-new-payment">
+  <div class="section-head"><div><div class="section-title">支払申請 — Bước 2</div><div class="section-sub">Yêu cầu thanh toán — liên kết với 経費申請</div></div></div>
+  <div class="form-panel">
+    <div class="form-panel-head" style="background:var(--orange);color:#fff">
+      <div class="step-num" style="background:rgba(255,255,255,0.25)">2</div>
+      <div class="form-panel-title">支払申請フォーム</div>
+      <div class="form-panel-sub">Liên kết để không bị miss</div>
+    </div>
+    <div class="form-panel-body">
+      <div class="fg-row">
+        <div class="fg">
+          <label>Subject <span class="req">*</span></label>
+          <div style="position:relative">
+            <input type="text" id="p-sub" placeholder="VD: 【支払申請】文具購入 – Mua văn phòng phẩm" style="padding-right:110px">
+            <button onclick="genSubject('pay')" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:linear-gradient(135deg,#D4600A,#e87a2a);color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap">✦ AI 件名</button>
+          </div>
+          <div id="sub-pay-suggestions" style="display:none;background:#fff;border:1px solid var(--line);border-radius:6px;margin-top:4px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.08)"></div>
+        </div>
+        <div class="fg"><label>Applicant / Department <span class="req">*</span> <em>申請者／部署</em></label><input type="text" id="p-app" placeholder="VD: Nguyen Van A / Dev Team"></div>
+      </div>
+      <div class="fg">
+        <label>Payment Type <span class="req">*</span> <em>支払区分</em></label>
+        <select id="p-type" onchange="renderPayeeList('')">
+          <option value="vendor">Vendor Payment（取引先への支払）</option>
+          <option value="employee">Employee Reimbursement（立替精算）</option>
+        </select>
+      </div>
+
+      <div class="ai-box orange">
+        <div class="ai-box-title">✦ AI — Purpose &amp; Description</div>
+        <div class="ai-chips" id="pay-chips">
+          <span class="chip orange-chip" onclick="tc(this,'pay','hàng hoá')">📦 商品代</span>
+          <span class="chip orange-chip" onclick="tc(this,'pay','dịch vụ')">🔧 サービス</span>
+          <span class="chip orange-chip" onclick="tc(this,'pay','di chuyển')">🚕 交通費</span>
+          <span class="chip orange-chip" onclick="tc(this,'pay','ăn uống')">🍽 飲食費</span>
+          <span class="chip orange-chip" onclick="tc(this,'pay','đào tạo')">📚 研修費</span>
+        </div>
+        <input type="text" id="pay-ctx" placeholder="Chi tiết thêm..." style="margin-bottom:8px;font-size:12px">
+        <div class="ai-result" id="pay-ai-out"><span style="color:var(--muted);font-style:italic;font-size:12px">AI viết mô tả mục đích thanh toán</span></div>
+        <div class="ai-actions">
+          <button class="btn-ai orange" id="pay-ai-btn" onclick="genAI('pay','p-pur')">✦ Tạo mô tả</button>
+          <button class="btn-ai-use" id="pay-ai-use" onclick="useAI('pay','p-pur')">✓ Dùng câu này</button>
+        </div>
+      </div>
+
+      <div class="fg"><label>Purpose &amp; Description <span class="req">*</span> <em>支払目的・内容</em></label><textarea id="p-pur" rows="3"></textarea></div>
+      <div class="fg-row">
+        <div class="fg"><label>Total Amount <span class="req">*</span> <em>支払金額（VND合計）</em></label><input type="number" id="p-amt" placeholder="VND"></div>
+        <div class="fg"><label>Scheduled Payment Date <span class="req">*</span> <em>支払予定日</em></label><input type="date" id="p-due"></div>
+      </div>
+
+      <div class="fg">
+        <label>Payee Information <span class="req">*</span> <em>支払先情報</em></label>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:7px">Chọn từ danh sách đã lưu — <button onclick="goPage('accounts')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:11px;text-decoration:underline">+ Thêm account mới</button></div>
+        <div class="account-selector">
+          <div class="account-search"><span style="color:var(--muted)">🔍</span><input type="text" id="payee-q" placeholder="Tìm tên, ngân hàng..." oninput="renderPayeeList(this.value)"></div>
+          <div class="acc-list-inner" id="payee-list"></div>
+        </div>
+        <textarea id="p-payee" rows="2" placeholder="Thông tin tự điền khi chọn bên trên" style="margin-top:8px;font-size:12px;font-family:'IBM Plex Mono',monospace"></textarea>
+      </div>
+
+      <div class="fg">
+        <label>Related Approval Document <em>関連稟議書番号（URL）</em></label>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Chọn 経費申請 liên quan (tự điền Subject + Amount)</div>
+        <select id="p-exp-link" onchange="autoFill()" style="margin-bottom:7px">
+          <option value="">— Chọn 経費申請 đã có —</option>
+        </select>
+        <input type="url" id="p-doc-url" placeholder="https://... URL rakumo của 経費申請">
+      </div>
+
+      <button class="btn-primary orange" onclick="savePayment()">登録 → Lưu 支払申請</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ ACCOUNTS ════ -->
+<div class="page" id="page-accounts">
+  <div class="section-head"><div><div class="section-title">口座管理</div><div class="section-sub">Lưu tài khoản ngân hàng — dùng lại khi làm 支払申請</div></div></div>
+  <div class="form-panel" style="margin-bottom:22px">
+    <div class="form-panel-head" style="background:var(--paper);border-bottom:1px solid var(--line)">
+      <div class="form-panel-title">➕ Thêm tài khoản</div>
+      <label style="font-size:12px;color:var(--blue);cursor:pointer;margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400">
+        📂 Import CSV
+        <input type="file" accept=".csv" onchange="importCSV(event)" style="display:none">
+      </label>
+      <span style="font-size:11px;color:var(--muted);margin-left:8px">format: type,name,bank,number,branch</span>
+    </div>
+    <div class="form-panel-body">
+      <div class="fg-row">
+        <div class="fg"><label>Loại <span class="req">*</span></label><select id="acc-type"><option value="vendor">取引先 Vendor</option><option value="employee">社員 Employee</option></select></div>
+        <div class="fg"><label>Tên <span class="req">*</span></label><input type="text" id="acc-name" placeholder="Amazon Japan / Nguyen Van A"></div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>Ngân hàng</label><input type="text" id="acc-bank" placeholder="Techcombank, MUFG..."></div>
+        <div class="fg"><label>Số tài khoản</label><input type="text" id="acc-num" placeholder="19031234567890"></div>
+      </div>
+      <div class="fg"><label>Chi nhánh</label><input type="text" id="acc-branch" placeholder="Chi nhánh Hà Nội, 渋谷支店"></div>
+      <button class="btn-primary" style="width:auto;padding:10px 24px" onclick="saveAccount()">Lưu tài khoản</button>
+    </div>
+  </div>
+  <div class="accounts-grid" id="accGrid"></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal"><div class="modal"><div id="modal-body"></div><button class="btn-secondary" style="width:100%;margin-top:14px" onclick="closeModal()">✕ Đóng</button></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+let expenses = JSON.parse(localStorage.getItem('rkm_e')||'[]');
+let payments = JSON.parse(localStorage.getItem('rkm_p')||'[]');
+let accounts = JSON.parse(localStorage.getItem('rkm_a')||'[]');
+let expKw=[], payKw=[], expAI='', payAI='', selPayee=null;
+const JPY=0.006;
+
+function save(){localStorage.setItem('rkm_e',JSON.stringify(expenses));localStorage.setItem('rkm_p',JSON.stringify(payments));localStorage.setItem('rkm_a',JSON.stringify(accounts));}
+
+function goPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  ['dashboard','new-expense','new-payment','accounts'].forEach((p,i)=>{
+    if(p===id) document.querySelectorAll('.nav-btn')[i].classList.add('active');
+  });
+  if(id==='dashboard') renderDash();
+  if(id==='new-payment'){fillExpSelect();renderPayeeList('');}
+  if(id==='accounts') renderAccounts();
+}
+
+async function genSubject(scope){
+  const isE = scope==='exp';
+  const item    = isE ? document.getElementById('e-item').value.trim() : '';
+  const vendor  = isE ? document.getElementById('e-vendor').value.trim() : '';
+  const purpose = isE ? document.getElementById('e-pur').value.trim() : document.getElementById('p-pur').value.trim();
+  const payType = !isE ? (document.getElementById('p-type').value==='vendor'?'Vendor Payment':'Employee Reimbursement') : '';
+  const ctx     = isE ? document.getElementById('exp-ctx').value.trim() : document.getElementById('pay-ctx').value.trim();
+  const kws     = (isE ? expKw : payKw).join(', ');
+  const boxId   = isE ? 'sub-exp-suggestions' : 'sub-pay-suggestions';
+  const inputId = isE ? 'e-sub' : 'p-sub';
+  const prefix  = isE ? '【経費申請】' : '【支払申請】';
+
+  const box = document.getElementById(boxId);
+  box.style.display='block';
+  box.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--muted)">⏳ AI đang tạo gợi ý subject song ngữ...</div>';
+
+  // Lấy thêm nội dung ô subject hiện tại (người dùng có thể đã gõ gợi ý)
+  const currentSub = document.getElementById(inputId).value.trim();
+  const info = [
+    currentSub && `Mô tả của người dùng: ${currentSub}`,
+    item        && `Tên hàng hoá/dịch vụ: ${item}`,
+    vendor      && `Nhà cung cấp/mua tại: ${vendor}`,
+    kws         && `Loại chi phí: ${kws}`,
+    ctx         && `Chi tiết bổ sung: ${ctx}`,
+    purpose     && `Mục đích: ${purpose.slice(0,200)}`,
+    payType     && `Loại thanh toán: ${payType}`
+  ].filter(Boolean).join('\n');
+
+  const today = new Date();
+  const ymJP = `${today.getFullYear()}年${today.getMonth()+1}月`;
+  const ymVI = `tháng ${today.getMonth()+1}/${today.getFullYear()}`;
+
+  try {
+    const r = await apiFetch(`Bạn là chuyên gia soạn thảo văn bản hành chính song ngữ Việt-Nhật cho hệ thống Rakumo (phần mềm quản lý chi phí công ty Nhật).
+
+Tạo 3 gợi ý Subject cho form ${isE?'経費申請 (Xin duyệt chi phí)':'支払申請 (Yêu cầu thanh toán)'}.
+
+QUY TẮC BẮT BUỘC:
+1. Prefix cố định: "${prefix}" đặt đầu tiêu đề
+2. Cấu trúc: ${prefix}[Nội dung cụ thể tiếng Nhật] – [Nội dung cụ thể tiếng Việt]
+3. Phần nội dung PHẢI nêu rõ: TÊN HÀNG/DỊCH VỤ cụ thể + tháng năm (${ymJP} / ${ymVI})
+4. KHÔNG dùng cụm chung chung như "経費精算", "支出承認", "お願い", "chi phí văn phòng" nếu đã biết tên cụ thể
+5. Ví dụ TỐT: 【経費申請】ボールペン・ノート購入（10点） ${ymJP} – Mua bút bi & vở A4 (10 cái) ${ymVI}
+6. Ví dụ XẤU: 【経費申請】経費精算のお願い – Đề nghị thanh toán chi phí  ← quá chung chung
+7. 3 gợi ý khác nhau về cách diễn đạt (ngắn / trung bình / chi tiết)
+
+Thông tin có sẵn:
+${info || '(người dùng chưa điền thêm thông tin — hãy dùng mô tả ở trên để suy luận)'}
+
+Chỉ trả về JSON:
+{"subjects":["subject 1","subject 2","subject 3"]}`, 700);
+    const data = await r.json();
+    const text = data.content?.find(b=>b.type==='text')?.text||'';
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    box.innerHTML = parsed.subjects.map(s=>`
+      <div onclick="document.getElementById('${inputId}').value=this.dataset.v;document.getElementById('${boxId}').style.display='none';showToast('✓ Đã chọn subject')" data-v="${s.replace(/"/g,'&quot;')}"
+        style="padding:10px 14px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--line);color:var(--ink);transition:background .12s"
+        onmouseover="this.style.background='#f0f4ff'" onmouseout="this.style.background=''">
+        <span style="font-size:10px;background:#e8f0fb;color:var(--blue);padding:1px 6px;border-radius:3px;margin-right:6px">VN·JP</span>${s}
+      </div>`).join('');
+  } catch(e){
+    box.innerHTML=`<div style="padding:10px 14px;font-size:12px;color:var(--red)">Lỗi kết nối AI. Thử lại sau.</div>`;
+  }
+}
+
+function showToast(msg){ toast(msg); }
+
+
+function getApiKey(){ return localStorage.getItem('rkm_apikey')||''; }
+function saveApiKey(){
+  const k = document.getElementById('api-key-input').value.trim();
+  if(!k){ toast('Nhap API key truoc'); return; }
+  localStorage.setItem('rkm_apikey', k);
+  updateApiStatus();
+  document.getElementById('api-panel').style.display='none';
+  toast('Da luu API key');
+}
+function clearApiKey(){
+  localStorage.removeItem('rkm_apikey');
+  document.getElementById('api-key-input').value='';
+  updateApiStatus();
+  toast('Da xoa API key');
+}
+function toggleApiInput(){
+  const p = document.getElementById('api-panel');
+  const showing = p.style.display==='flex';
+  p.style.display = showing ? 'none' : 'flex';
+  if(!showing){ const k=getApiKey(); if(k) document.getElementById('api-key-input').value=k; }
+}
+function updateApiStatus(){
+  const k = getApiKey();
+  const btn = document.getElementById('api-key-btn');
+  if(!btn) return;
+  btn.textContent = k ? '&#128273; Key OK' : '&#128273; API Key';
+  btn.style.color = k ? '#b8960c' : 'rgba(255,255,255,0.6)';
+  btn.style.borderColor = k ? 'rgba(184,150,12,0.4)' : 'rgba(255,255,255,0.15)';
+}
+async function apiFetch(prompt, maxTokens){
+  maxTokens = maxTokens || 600;
+  const key = getApiKey();
+  const headers = {'Content-Type':'application/json'};
+  if(key){
+    headers['x-api-key'] = key;
+    headers['anthropic-version'] = '2023-06-01';
+    headers['anthropic-dangerous-direct-browser-access'] = 'true';
+  }
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST', headers,
+    body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:maxTokens, messages:[{role:'user',content:prompt}]})
+  });
+}
+function calcJPY(){
+  const v=parseInt(document.getElementById('e-vnd').value)||0;
+  const j=Math.round(v*JPY);
+  document.getElementById('e-jpy-disp').textContent=`≈ ${j.toLocaleString()}円`;
+  document.getElementById('e-price-fmt').value=v?`${v.toLocaleString()}VND約${j.toLocaleString()}円`:'';
+}
+
+function tc(el,scope,kw){
+  el.classList.toggle('on');
+  const arr=scope==='exp'?expKw:payKw;
+  if(el.classList.contains('on')) arr.push(kw);
+  else{const i=arr.indexOf(kw);if(i>-1)arr.splice(i,1);}
+}
+
+async function genAI(scope,tid){
+  const isE=scope==='exp';
+  const ctx=document.getElementById(isE?'exp-ctx':'pay-ctx').value.trim();
+  const kws=isE?expKw:payKw;
+  const out=document.getElementById(isE?'exp-ai-out':'pay-ai-out');
+  const btn=document.getElementById(isE?'exp-ai-btn':'pay-ai-btn');
+  const useB=document.getElementById(isE?'exp-ai-use':'pay-ai-use');
+  out.className='ai-result loading'; out.textContent=''; btn.disabled=true; useB.style.display='none';
+  const item   = isE ? document.getElementById('e-item').value.trim() : '';
+  const vendor = isE ? document.getElementById('e-vendor').value.trim() : '';
+  const sub    = isE ? document.getElementById('e-sub').value.trim() : document.getElementById('p-sub').value.trim();
+  const prompt=isE
+    ?`Bạn là chuyên gia soạn thảo văn bản hành chính song ngữ Việt-Nhật cho hệ thống Rakumo.
+
+Viết nội dung trường "購入目的" (mục đích mua hàng) cho đề xuất chi phí.
+
+YÊU CẦU FORMAT BẮT BUỘC — viết 2 đoạn liên tiếp:
+【日本語】
+(Đoạn tiếng Nhật: nêu rõ tên hàng, số lượng, lý do cần thiết, link nếu có)
+
+【Tiếng Việt】
+(Đoạn tiếng Việt: nội dung tương đương, chi tiết, rõ ràng để kế toán hiểu)
+
+Thông tin có sẵn:
+- Tên hàng hoá: ${item||'(chưa có)'}
+- Nhà cung cấp: ${vendor||'(chưa có)'}
+- Subject: ${sub||'(chưa có)'}
+- Loại chi phí: ${kws.join(', ')||'(chưa có)'}
+- Chi tiết bổ sung: ${ctx||'(chưa có)'}
+
+Chỉ viết nội dung, không có tiêu đề thừa, không markdown.`
+    :`Bạn là chuyên gia soạn thảo văn bản hành chính song ngữ Việt-Nhật cho hệ thống Rakumo.
+
+Viết nội dung trường "Purpose & Description" cho yêu cầu thanh toán.
+Loại: ${document.getElementById('p-type').value==='vendor'?'Vendor Payment（取引先への支払）':'Employee Reimbursement（立替精算）'}
+
+YÊU CẦU FORMAT BẮT BUỘC — viết 2 đoạn liên tiếp:
+【日本語】
+(Đoạn tiếng Nhật: nêu rõ mục đích, nội dung thanh toán, lý do)
+
+【Tiếng Việt】
+(Đoạn tiếng Việt: nội dung tương đương để kế toán hiểu)
+
+Thông tin có sẵn:
+- Subject: ${sub||'(chưa có)'}
+- Loại chi phí: ${kws.join(', ')||'(chưa có)'}
+- Chi tiết bổ sung: ${ctx||'(chưa có)'}
+
+Chỉ viết nội dung, không có tiêu đề thừa, không markdown.`;
+  try{
+    const r=await apiFetch(prompt, 600);
+    const d=await r.json();
+    const t=d.content?.[0]?.text||'Lỗi';
+    if(isE) expAI=t; else payAI=t;
+    out.className='ai-result'; out.textContent=t; useB.style.display='inline-flex';
+  }catch{out.className='ai-result';out.innerHTML='<span style="color:var(--red)">Lỗi kết nối</span>';}
+  btn.disabled=false;
+}
+
+function useAI(scope,tid){
+  document.getElementById(tid).value=scope==='exp'?expAI:payAI;
+  toast('✓ Đã điền vào ô mục đích');
+}
+
+function saveExpense(){
+  const sub=document.getElementById('e-sub').value.trim();
+  const item=document.getElementById('e-item').value.trim();
+  const pur=document.getElementById('e-pur').value.trim();
+  const vendor=document.getElementById('e-vendor').value.trim();
+  const qty=document.getElementById('e-qty').value;
+  const vnd=document.getElementById('e-vnd').value;
+  const fmt=document.getElementById('e-price-fmt').value;
+  const date=document.getElementById('e-date').value;
+  const reason=document.getElementById('e-reason').value.trim();
+  if(!sub||!item||!pur||!vendor||!qty||!vnd||!date){toast('⚠ Vui lòng điền đủ trường bắt buộc',1);return;}
+  const exp={id:Date.now(),sub,item,pur,vendor,reason,qty,vnd:parseInt(vnd),fmt,date,created:new Date().toISOString(),payId:null};
+  expenses.push(exp); save();
+  ['e-sub','e-item','e-pur','e-vendor','e-qty','e-vnd','e-price-fmt','e-reason','e-date'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('e-jpy-disp').textContent='≈ 0円';
+  document.getElementById('exp-ai-out').innerHTML='<span style="color:var(--muted);font-style:italic;font-size:12px">Chọn chip + nhập chi tiết → AI viết 購入目的 đầy đủ</span>';
+  document.getElementById('exp-ai-use').style.display='none';
+  document.querySelectorAll('#exp-chips .chip').forEach(c=>c.classList.remove('on'));
+  expKw=[]; expAI='';
+  toast('✓ Đã lưu 経費申請'); checkAlert();
+  if(confirm('✓ Đã lưu! Tạo 支払申請 liên kết ngay?')){
+    goPage('new-payment');
+    setTimeout(()=>{document.getElementById('p-exp-link').value=exp.id;autoFill();},150);
+  }
+}
+
+function savePayment(){
+  const sub=document.getElementById('p-sub').value.trim();
+  const app=document.getElementById('p-app').value.trim();
+  const type=document.getElementById('p-type').value;
+  const pur=document.getElementById('p-pur').value.trim();
+  const amt=document.getElementById('p-amt').value;
+  const due=document.getElementById('p-due').value;
+  const payee=document.getElementById('p-payee').value.trim();
+  const url=document.getElementById('p-doc-url').value.trim();
+  const expLink=document.getElementById('p-exp-link').value;
+  if(!sub||!app||!pur||!amt||!due||!payee){toast('⚠ Vui lòng điền đủ trường bắt buộc',1);return;}
+  const pay={id:Date.now(),sub,app,type,pur,amt:parseInt(amt),due,payee,url,expId:expLink?parseInt(expLink):null,created:new Date().toISOString()};
+  payments.push(pay);
+  if(expLink) expenses=expenses.map(e=>e.id===parseInt(expLink)?{...e,payId:pay.id}:e);
+  save();
+  ['p-sub','p-app','p-pur','p-amt','p-payee','p-doc-url'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('p-exp-link').value=''; document.getElementById('p-due').value='';
+  document.querySelectorAll('#pay-chips .chip').forEach(c=>c.classList.remove('on'));
+  payKw=[]; payAI=''; selPayee=null;
+  document.getElementById('pay-ai-out').innerHTML='<span style="color:var(--muted);font-style:italic;font-size:12px">AI viết mô tả mục đích thanh toán</span>';
+  document.getElementById('pay-ai-use').style.display='none';
+  toast('✓ Đã lưu 支払申請'); checkAlert(); goPage('dashboard');
+}
+
+function autoFill(){
+  const id=parseInt(document.getElementById('p-exp-link').value); if(!id) return;
+  const e=expenses.find(x=>x.id===id); if(!e) return;
+  document.getElementById('p-sub').value=`【支払申請】${e.sub}`;
+  document.getElementById('p-amt').value=e.vnd;
+  document.getElementById('p-pur').value=e.pur;
+}
+
+function fillExpSelect(){
+  const sel=document.getElementById('p-exp-link');
+  sel.innerHTML='<option value="">— Chọn 経費申請 đã có —</option>'+
+    expenses.map(e=>`<option value="${e.id}">${e.date} | ${e.sub}${e.payId?' ✓':' ⚠'}</option>`).join('');
+}
+
+function renderPayeeList(q){
+  const type=document.getElementById('p-type')?.value||'vendor';
+  const list=document.getElementById('payee-list'); if(!list) return;
+  const filtered=accounts.filter(a=>a.type===type&&(a.name.toLowerCase().includes(q.toLowerCase())||(a.bank||'').toLowerCase().includes(q.toLowerCase())));
+  if(!filtered.length){list.innerHTML=`<div class="no-acc">Không tìm thấy — <a href="#" onclick="goPage('accounts')" style="color:var(--blue)">thêm account</a></div>`;return;}
+  list.innerHTML=filtered.map(a=>`
+    <div class="acc-item ${selPayee===a.id?'selected':''}" onclick="selectPayee(${a.id})">
+      <div><div class="acc-name">${a.name}</div><div class="acc-bank">${[a.bank,a.number,a.branch].filter(Boolean).join(' · ')}</div></div>
+      <span class="acc-tag ${a.type==='vendor'?'tag-vendor':'tag-employee'}">${a.type==='vendor'?'取引先':'社員'}</span>
+    </div>`).join('');
+}
+
+function selectPayee(id){
+  selPayee=id;
+  const a=accounts.find(x=>x.id===id); if(!a) return;
+  document.getElementById('p-payee').value=`Name: ${a.name}\nBank: ${a.bank||'-'}\nAccount No: ${a.number||'-'}\nBranch: ${a.branch||'-'}`;
+  renderPayeeList(document.getElementById('payee-q')?.value||'');
+}
+
+function saveAccount(){
+  const name=document.getElementById('acc-name').value.trim();
+  if(!name){toast('⚠ Nhập tên',1);return;}
+  accounts.push({id:Date.now(),type:document.getElementById('acc-type').value,name,bank:document.getElementById('acc-bank').value.trim(),number:document.getElementById('acc-num').value.trim(),branch:document.getElementById('acc-branch').value.trim()});
+  save();['acc-name','acc-bank','acc-num','acc-branch'].forEach(i=>document.getElementById(i).value='');
+  renderAccounts(); toast('✓ Đã lưu tài khoản');
+}
+
+function deleteAccount(id){accounts=accounts.filter(a=>a.id!==id);save();renderAccounts();toast('🗑 Đã xoá');}
+
+function renderAccounts(){
+  const g=document.getElementById('accGrid');
+  if(!accounts.length){g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Chưa có tài khoản</div>';return;}
+  g.innerHTML=accounts.map(a=>`
+    <div class="acc-card">
+      <div><div style="display:flex;align-items:center;gap:7px;margin-bottom:3px"><div class="acc-card-name">${a.name}</div><span class="acc-tag ${a.type==='vendor'?'tag-vendor':'tag-employee'}">${a.type==='vendor'?'取引先':'社員'}</span></div>
+      <div class="acc-card-detail">${a.bank?`🏦 ${a.bank}`:''}${a.number?` | ${a.number}`:''}${a.branch?`\n📍 ${a.branch}`:''}</div></div>
+      <button class="btn-sm del" onclick="deleteAccount(${a.id})">✕</button>
+    </div>`).join('');
+}
+
+function importCSV(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const lines=ev.target.result.split('\n').filter(l=>l.trim());
+    let n=0;
+    lines.forEach((ln,i)=>{
+      if(i===0&&ln.toLowerCase().includes('type')) return;
+      const [type,name,bank,number,branch]=ln.split(',').map(s=>s.trim().replace(/^"|"$/g,''));
+      if(name){accounts.push({id:Date.now()+i,type:type||'employee',name,bank,number,branch});n++;}
+    });
+    save(); renderAccounts(); toast(`✓ Import ${n} tài khoản`);
+  };
+  r.readAsText(f);
+}
+
+function renderDash(){
+  document.getElementById('dashMonth').textContent=new Date().toLocaleDateString('vi-VN',{month:'long',year:'numeric'});
+  const missE=expenses.filter(e=>!e.payId);
+  const missP=payments.filter(p=>!p.expId);
+  const done=expenses.filter(e=>e.payId).length;
+  document.getElementById('s1').textContent=expenses.length;
+  document.getElementById('s2').textContent=payments.length;
+  document.getElementById('s3').textContent=missE.length;
+  document.getElementById('s4').textContent=missP.length;
+  document.getElementById('s5').textContent=done;
+  checkAlert();
+  const tb=document.getElementById('dashTbody');
+  if(!expenses.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">Chưa có dữ liệu</td></tr>';return;}
+  const sorted=[...expenses].sort((a,b)=>new Date(b.created)-new Date(a.created));
+  tb.innerHTML=sorted.map(e=>{
+    const lp=payments.find(p=>p.id===e.payId);
+    return `<tr>
+      <td>${!e.payId?'<span class="badge badge-miss">⚠ Chưa có 支払</span>':'<span class="badge badge-linked">✓ Đã liên kết</span>'}</td>
+      <td style="max-width:170px;word-break:break-word;font-size:13px">${e.sub}</td>
+      <td style="max-width:140px;word-break:break-word;font-size:13px">${e.item}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap">${e.fmt||e.vnd.toLocaleString()+'VND'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${e.date}</td>
+      <td style="font-size:12px">${lp?`<span style="color:var(--green);font-weight:600">⛓ ${lp.sub.substring(0,22)}…</span>`:'<span style="color:var(--red)">✕ Chưa có</span>'}</td>
+      <td><div class="btns">
+        ${!e.payId?`<button class="btn-sm link" onclick="mkPay(${e.id})">＋ Tạo 支払</button>`:''}
+        <button class="btn-sm copy" onclick="showCopy(${e.id})">📋</button>
+        <button class="btn-sm del" onclick="delExp(${e.id})">✕</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function mkPay(id){goPage('new-payment');setTimeout(()=>{document.getElementById('p-exp-link').value=id;autoFill();},150);}
+function delExp(id){if(!confirm('Xoá?')) return;expenses=expenses.filter(e=>e.id!==id);save();renderDash();toast('🗑 Đã xoá');}
+
+function checkAlert(){
+  const miss=expenses.filter(e=>!e.payId);
+  const b=document.getElementById('alertBanner');
+  if(miss.length){
+    b.classList.remove('hidden');
+    document.getElementById('alertText').innerHTML=miss.slice(0,3).map(e=>`<span class="alert-pill">⚠ ${e.sub.substring(0,25)}</span>`).join('')+(miss.length>3?`<span class="alert-pill">+${miss.length-3} mục</span>`:'');
+  } else b.classList.add('hidden');
+}
+
+function showCopy(id){
+  const e=expenses.find(x=>x.id===id); if(!e) return;
+  const fields=[['Subject',e.sub],['物品名',e.item],['購入目的',e.pur],['購入先',e.vendor],['選定理由',e.reason||'-'],['数量',e.qty],['価格',e.fmt||e.vnd+'VND']];
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-title">📋 経費申請 — Copy từng trường</div>
+    <div class="modal-sub">${e.date} · ${e.item}</div>
+    ${fields.map(([l,v])=>`<div class="cfield"><div class="cfield-label">${l}</div><div class="cfield-val">${v}</div><button class="btn-copy-sm" onclick="cp(this,'${encodeURIComponent(v)}')">Copy</button></div>`).join('')}`;
+  document.getElementById('modal').classList.add('on');
+}
+
+function showBatch(){
+  const miss=expenses.filter(e=>!e.payId);
+  document.getElementById('modal-body').innerHTML=`<div class="modal-title">📤 Batch Submit</div><div class="modal-sub">${miss.length?`⚠ ${miss.length} 経費申請 chưa có 支払申請`:'✓ Tất cả đã liên kết!'}</div>`+
+    (miss.length?miss.map(e=>`<div style="border:1px solid var(--line);border-radius:7px;padding:12px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;font-weight:600">${e.date} · ${e.item}</span><button class="btn-sm link" onclick="mkPay(${e.id});closeModal()">＋ Tạo 支払</button></div><div class="cfield"><div class="cfield-label">Subject</div><div class="cfield-val">${e.sub}</div><button class="btn-copy-sm" onclick="cp(this,'${encodeURIComponent(e.sub)}')">Copy</button></div><div class="cfield"><div class="cfield-label">価格</div><div class="cfield-val">${e.fmt}</div><button class="btn-copy-sm" onclick="cp(this,'${encodeURIComponent(e.fmt)}')">Copy</button></div></div>`).join(''):'');
+  document.getElementById('modal').classList.add('on');
+}
+
+function cp(btn,enc){navigator.clipboard.writeText(decodeURIComponent(enc)).then(()=>{btn.textContent='✓';btn.classList.add('ok');setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('ok');},1800);});}
+function closeModal(){document.getElementById('modal').classList.remove('on');}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+let tt;
+function toast(msg,warn=0){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.style.background=warn?'var(--red)':'var(--ink)';
+  t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2500);
+}
+
+// Init
+document.getElementById('e-date').value=new Date().toISOString().split('T')[0];
+document.getElementById('p-due').value=new Date().toISOString().split('T')[0];
+renderDash(); checkAlert();
+window.addEventListener("DOMContentLoaded", updateApiStatus);
+</script>
+</body>
+</html>
